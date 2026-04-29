@@ -1,0 +1,447 @@
+"""
+components/widgets.py — Componentes visuais reutilizáveis
+
+Centraliza widgets que aparecem em várias telas:
+- AppBar (barra superior com logo, navegação, ThemeToggle e usuário)
+- StatusBadge (selo colorido de status)
+- ItemCard (card de item perdido/achado)
+- StatCard (card de métrica)
+- GalleryCard (card de galeria)
+- SearchBar (barra de busca)
+"""
+
+import customtkinter as ctk
+from config import COLORS, FONTS, STATUS
+from components.theme_toggle import ThemeToggle
+
+
+# ============================================
+# APP BAR — barra superior
+# ============================================
+class AppBar(ctk.CTkFrame):
+    """Barra superior com brand, navegação, theme toggle e usuário logado."""
+
+    def __init__(self, parent, usuario, on_logout, nav_atual="inicio",
+                 on_nav=None, subtitle=None, on_theme_change=None):
+        super().__init__(parent, fg_color=COLORS["white"], height=64,
+                         corner_radius=0, border_width=0)
+        self.usuario = usuario
+        self.on_logout = on_logout
+        self.on_nav = on_nav
+        self.nav_atual = nav_atual
+        self.on_theme_change = on_theme_change
+
+        inner = ctk.CTkFrame(self, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=24, pady=12)
+
+        # === Brand (esquerda) ===
+        brand_frame = ctk.CTkFrame(inner, fg_color="transparent")
+        brand_frame.pack(side="left")
+
+        logo_label = ctk.CTkLabel(
+            brand_frame,
+            text="A",
+            width=36, height=36,
+            corner_radius=8,
+            fg_color=COLORS["magenta"],
+            text_color="#FFFFFF",  # branco fixo (logo da marca sempre branco)
+            font=("Segoe UI", 16, "bold")
+        )
+        logo_label.pack(side="left")
+
+        text_frame = ctk.CTkFrame(brand_frame, fg_color="transparent")
+        text_frame.pack(side="left", padx=(10, 0))
+
+        ctk.CTkLabel(
+            text_frame,
+            text="Achados Unima",
+            font=("Segoe UI", 14, "bold"),
+            text_color=COLORS["ink_900"]
+        ).pack(anchor="w")
+
+        sub = subtitle if subtitle else (
+            "Painel Administrativo" if usuario["tipo"] == "funcionario" else "Afya Maceió"
+        )
+        ctk.CTkLabel(
+            text_frame,
+            text=sub,
+            font=("Segoe UI", 10),
+            text_color=COLORS["ink_400"]
+        ).pack(anchor="w")
+
+        # === Navegação (centro) ===
+        if usuario["tipo"] == "aluno":
+            nav_items = [
+                ("inicio", "Início"),
+                ("cadastrar", "Cadastrar perda"),
+                ("disponiveis", "Itens achados"),
+            ]
+        else:
+            nav_items = [
+                ("admin", "Mural"),
+                ("disponiveis", "Itens recebidos"),
+            ]
+
+        nav_frame = ctk.CTkFrame(inner, fg_color="transparent")
+        nav_frame.pack(side="left", padx=(40, 0))
+
+        for key, label in nav_items:
+            is_active = key == nav_atual
+            btn = ctk.CTkButton(
+                nav_frame,
+                text=label,
+                font=("Segoe UI", 12, "bold" if is_active else "normal"),
+                fg_color=COLORS["magenta_50"] if is_active else "transparent",
+                text_color=COLORS["magenta"] if is_active else COLORS["ink_500"],
+                hover_color=COLORS["ink_50"],
+                corner_radius=8,
+                height=32,
+                width=110 if "achados" in label.lower() or "recebidos" in label.lower() else 90,
+                command=lambda k=key: on_nav(k) if on_nav else None
+            )
+            btn.pack(side="left", padx=2)
+
+        # === Lado direito: Toggle de tema + Usuário ===
+        # Container do lado direito (usuário + toggle)
+        right_frame = ctk.CTkFrame(inner, fg_color="transparent")
+        right_frame.pack(side="right")
+
+        # Botão de logout (mais à direita)
+        logout_btn = ctk.CTkButton(
+            right_frame,
+            text="Sair",
+            font=("Segoe UI", 11),
+            fg_color="transparent",
+            text_color=COLORS["ink_500"],
+            hover_color=COLORS["ink_50"],
+            width=50, height=28,
+            corner_radius=14,
+            command=on_logout
+        )
+        logout_btn.pack(side="right", padx=(8, 0))
+
+        # Pill do usuário
+        user_frame = ctk.CTkFrame(
+            right_frame,
+            fg_color=COLORS["white"],
+            border_color=COLORS["ink_100"],
+            border_width=1,
+            corner_radius=20,
+            height=36
+        )
+        user_frame.pack(side="right")
+
+        avatar = ctk.CTkLabel(
+            user_frame,
+            text=usuario.get("foto_url", "👤"),
+            font=("Segoe UI", 14),
+            width=28, height=28,
+            corner_radius=14,
+            fg_color=COLORS["magenta_50"]
+        )
+        avatar.pack(side="left", padx=(4, 8), pady=4)
+
+        ctk.CTkLabel(
+            user_frame,
+            text=usuario["nome"].split()[0],
+            font=("Segoe UI", 12, "bold"),
+            text_color=COLORS["ink_700"]
+        ).pack(side="left", padx=(0, 12))
+
+        # === ThemeToggle (no canto superior direito, antes do usuário) ===
+        toggle_container = ctk.CTkFrame(right_frame, fg_color="transparent")
+        toggle_container.pack(side="right", padx=(0, 14))
+
+        self.theme_toggle = ThemeToggle(
+            toggle_container,
+            on_toggle=self._on_theme_toggled
+        )
+        self.theme_toggle.pack(pady=4)
+
+        # Linha divisória inferior
+        divider = ctk.CTkFrame(self, fg_color=COLORS["ink_100"], height=1)
+        divider.pack(side="bottom", fill="x")
+
+    def _on_theme_toggled(self, novo_tema):
+        """Callback quando o tema é alternado."""
+        if self.on_theme_change:
+            self.on_theme_change(novo_tema)
+
+
+# ============================================
+# STATUS BADGE — selo colorido de status
+# ============================================
+class StatusBadge(ctk.CTkLabel):
+    """Pequeno selo colorido indicando o status."""
+
+    def __init__(self, parent, status):
+        bg, fg = self._cores(status)
+        texto = self._texto(status)
+        super().__init__(
+            parent,
+            text=f"  •  {texto}  ",
+            font=("Segoe UI", 11, "bold"),
+            fg_color=bg,
+            text_color=fg,
+            corner_radius=12,
+            height=24,
+        )
+
+    @staticmethod
+    def _cores(status):
+        mapa = {
+            "aberto": (COLORS["status_aberto_bg"], COLORS["status_aberto_fg"]),
+            "analise": (COLORS["status_analise_bg"], COLORS["status_analise_fg"]),
+            "encontrado": (COLORS["status_encontrado_bg"], COLORS["status_encontrado_fg"]),
+            "devolvido": (COLORS["status_devolvido_bg"], COLORS["status_devolvido_fg"]),
+            "naoachado": (COLORS["status_naoachado_bg"], COLORS["status_naoachado_fg"]),
+        }
+        return mapa.get(status, mapa["aberto"])
+
+    @staticmethod
+    def _texto(status):
+        return STATUS.get(status, status.title())
+
+
+# ============================================
+# STAT CARD — card de métrica
+# ============================================
+class StatCard(ctk.CTkFrame):
+    """Card de métrica com ícone, número grande e label."""
+
+    def __init__(self, parent, icone, numero, label, on_click=None):
+        super().__init__(
+            parent,
+            fg_color=COLORS["white"],
+            border_color=COLORS["ink_100"],
+            border_width=1,
+            corner_radius=14,
+            height=100
+        )
+        self.on_click = on_click
+
+        inner = ctk.CTkFrame(self, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=16, pady=14)
+
+        ic_frame = ctk.CTkLabel(
+            inner,
+            text=icone,
+            width=32, height=32,
+            corner_radius=8,
+            fg_color=COLORS["magenta_50"],
+            text_color=COLORS["magenta"],
+            font=("Segoe UI", 14)
+        )
+        ic_frame.pack(anchor="w")
+
+        ctk.CTkLabel(
+            inner,
+            text=str(numero),
+            font=("Segoe UI", 24, "bold"),
+            text_color=COLORS["ink_900"]
+        ).pack(anchor="w", pady=(8, 0))
+
+        ctk.CTkLabel(
+            inner,
+            text=label,
+            font=("Segoe UI", 11),
+            text_color=COLORS["ink_400"]
+        ).pack(anchor="w")
+
+        if on_click:
+            for widget in [self, inner]:
+                widget.bind("<Button-1>", lambda e: on_click())
+                widget.configure(cursor="hand2")
+
+
+# ============================================
+# ITEM CARD — card de item na listagem
+# ============================================
+class ItemCard(ctk.CTkFrame):
+    """Card horizontal mostrando um item: thumb + info + status."""
+
+    def __init__(self, parent, item, on_click=None, mostrar_aluno=False):
+        super().__init__(
+            parent,
+            fg_color=COLORS["white"],
+            border_color=COLORS["ink_100"],
+            border_width=1,
+            corner_radius=12,
+            height=80,
+        )
+        self.item = item
+        self.on_click = on_click
+
+        inner = ctk.CTkFrame(self, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=14, pady=12)
+
+        icone_cat = self._icone_categoria(item.get("categoria", ""))
+        thumb = ctk.CTkLabel(
+            inner,
+            text=icone_cat,
+            width=48, height=48,
+            corner_radius=10,
+            fg_color=COLORS["magenta_50"],
+            text_color=COLORS["magenta"],
+            font=("Segoe UI", 20)
+        )
+        thumb.pack(side="left")
+
+        info = ctk.CTkFrame(inner, fg_color="transparent")
+        info.pack(side="left", fill="both", expand=True, padx=(14, 10))
+
+        ctk.CTkLabel(
+            info,
+            text=item.get("nome", ""),
+            font=("Segoe UI", 13, "bold"),
+            text_color=COLORS["ink_900"],
+            anchor="w"
+        ).pack(anchor="w", fill="x")
+
+        meta_parts = []
+        if mostrar_aluno and item.get("aluno_nome"):
+            meta_parts.append(f"👤 {item['aluno_nome']}")
+        meta_parts.append(f"📍 {item.get('local', '')}")
+        if item.get("data_ocorrido"):
+            meta_parts.append(f"🗓 {self._formatar_data(item['data_ocorrido'])}")
+        meta_parts.append(f"🏷 {item.get('categoria', '')}")
+
+        meta_text = "   ".join(meta_parts)
+        ctk.CTkLabel(
+            info,
+            text=meta_text,
+            font=("Segoe UI", 11),
+            text_color=COLORS["ink_400"],
+            anchor="w"
+        ).pack(anchor="w", fill="x", pady=(2, 0))
+
+        if item.get("status"):
+            badge = StatusBadge(inner, item["status"])
+            badge.pack(side="right")
+
+        if on_click:
+            for w in [self, inner, info, thumb]:
+                w.bind("<Button-1>", lambda e: on_click(item))
+                w.configure(cursor="hand2")
+
+    @staticmethod
+    def _icone_categoria(categoria):
+        mapa = {
+            "Material escolar": "📚",
+            "Eletrônicos": "🎧",
+            "Roupas": "👕",
+            "Documentos": "💳",
+            "Acessórios": "🔑",
+            "Garrafas/Recipientes": "💧",
+            "Outros": "📦",
+        }
+        return mapa.get(categoria, "📦")
+
+    @staticmethod
+    def _formatar_data(data_str):
+        try:
+            partes = data_str.split("-")
+            return f"{partes[2]}/{partes[1]}"
+        except:
+            return data_str
+
+
+# ============================================
+# GALLERY CARD
+# ============================================
+class GalleryCard(ctk.CTkFrame):
+    """Card vertical (foto em cima, info embaixo)."""
+
+    def __init__(self, parent, item, on_click=None):
+        super().__init__(
+            parent,
+            fg_color=COLORS["white"],
+            border_color=COLORS["ink_100"],
+            border_width=1,
+            corner_radius=14,
+            width=200, height=200
+        )
+        self.item = item
+        self.pack_propagate(False)
+
+        foto_frame = ctk.CTkFrame(
+            self,
+            fg_color=COLORS["magenta_50"],
+            corner_radius=0,
+            height=120
+        )
+        foto_frame.pack(fill="x")
+        foto_frame.pack_propagate(False)
+
+        icone = ItemCard._icone_categoria(item.get("categoria", ""))
+        ctk.CTkLabel(
+            foto_frame,
+            text=icone,
+            font=("Segoe UI", 36),
+            text_color=COLORS["magenta"]
+        ).pack(expand=True)
+
+        info = ctk.CTkFrame(self, fg_color="transparent")
+        info.pack(fill="both", expand=True, padx=12, pady=10)
+
+        ctk.CTkLabel(
+            info,
+            text=item.get("nome", "")[:25],
+            font=("Segoe UI", 12, "bold"),
+            text_color=COLORS["ink_900"],
+            anchor="w"
+        ).pack(anchor="w", fill="x")
+
+        ctk.CTkLabel(
+            info,
+            text=f"📍 {item.get('local', '').split('—')[0].strip()[:20]}",
+            font=("Segoe UI", 10),
+            text_color=COLORS["ink_400"],
+            anchor="w"
+        ).pack(anchor="w", fill="x", pady=(2, 0))
+
+        if on_click:
+            for w in [self, foto_frame, info]:
+                w.bind("<Button-1>", lambda e: on_click(item))
+                w.configure(cursor="hand2")
+
+
+# ============================================
+# SEARCH BAR
+# ============================================
+class SearchBar(ctk.CTkFrame):
+    """Campo de busca com ícone."""
+
+    def __init__(self, parent, placeholder="Buscar...", on_change=None):
+        super().__init__(
+            parent,
+            fg_color=COLORS["white"],
+            border_color=COLORS["ink_100"],
+            border_width=1,
+            corner_radius=10,
+            height=40
+        )
+        self.on_change = on_change
+
+        ctk.CTkLabel(
+            self,
+            text="🔍",
+            font=("Segoe UI", 13),
+            text_color=COLORS["ink_400"]
+        ).pack(side="left", padx=(12, 4))
+
+        self.entry = ctk.CTkEntry(
+            self,
+            placeholder_text=placeholder,
+            border_width=0,
+            fg_color="transparent",
+            font=("Segoe UI", 12),
+            text_color=COLORS["ink_900"]
+        )
+        self.entry.pack(side="left", fill="both", expand=True, padx=(0, 8), pady=4)
+
+        if on_change:
+            self.entry.bind("<KeyRelease>", lambda e: on_change(self.entry.get()))
+
+    def get(self):
+        return self.entry.get()
