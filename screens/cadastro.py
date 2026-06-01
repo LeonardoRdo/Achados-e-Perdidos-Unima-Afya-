@@ -1,5 +1,13 @@
 """
-screens/cadastro.py — Cadastro de item perdido
+screens/cadastro.py — Cadastro de item perdido (Versão com Validação de Data)
+
+Formulário com:
+- Nome do item
+- Categorias em chips clicáveis
+- Local (dropdown)
+- Data (com validação de formato)
+- Descrição
+- Upload de foto (via API ImgBB)
 """
 
 import customtkinter as ctk
@@ -12,12 +20,11 @@ from api.imgbb import upload_imagem
 
 
 class CadastroPerda(ctk.CTkFrame):
-    def __init__(self, parent, usuario, on_navigate, on_logout, on_theme_change=None):
+    def __init__(self, parent, usuario, on_navigate, on_logout):
         super().__init__(parent, fg_color=COLORS["ink_25"], corner_radius=0)
         self.usuario = usuario
         self.on_navigate = on_navigate
         self.on_logout = on_logout
-        self.on_theme_change = on_theme_change
 
         self.categoria_selecionada = None
         self.foto_caminho = None
@@ -26,22 +33,25 @@ class CadastroPerda(ctk.CTkFrame):
         self._build()
 
     def _build(self):
+        # App bar
         app_bar = AppBar(
             self,
             self.usuario,
             self.on_logout,
             nav_atual="cadastrar",
-            on_nav=self.on_navigate,
-            on_theme_change=self.on_theme_change,
+            on_nav=self.on_navigate
         )
         app_bar.pack(fill="x", side="top")
 
-        body = ctk.CTkScrollableFrame(self, fg_color=COLORS["ink_25"], corner_radius=0)
+        # Body scrollável
+        body = ctk.CTkScrollableFrame(
+            self, fg_color=COLORS["ink_25"], corner_radius=0)
         body.pack(fill="both", expand=True)
 
         wrapper = ctk.CTkFrame(body, fg_color="transparent")
         wrapper.pack(fill="both", expand=True, padx=40, pady=24)
 
+        # Título
         ctk.CTkLabel(
             wrapper,
             text="Cadastrar item perdido",
@@ -56,6 +66,7 @@ class CadastroPerda(ctk.CTkFrame):
             text_color=COLORS["ink_500"]
         ).pack(anchor="w", pady=(2, 24))
 
+        # Card do formulário
         form_card = ctk.CTkFrame(
             wrapper,
             fg_color=COLORS["white"],
@@ -68,9 +79,12 @@ class CadastroPerda(ctk.CTkFrame):
         form_inner = ctk.CTkFrame(form_card, fg_color="transparent")
         form_inner.pack(fill="x", padx=28, pady=28)
 
+        # === Nome do item ===
         self._label(form_inner, "Nome do item *")
-        self.entry_nome = self._entry(form_inner, "Ex: Fone bluetooth JBL preto Tune 510BT")
+        self.entry_nome = self._entry(
+            form_inner, "Ex: Fone bluetooth JBL preto Tune 510BT")
 
+        # === Categoria ===
         self._label(form_inner, "Categoria *", pady_top=18)
         cat_frame = ctk.CTkFrame(form_inner, fg_color="transparent")
         cat_frame.pack(fill="x")
@@ -84,7 +98,7 @@ class CadastroPerda(ctk.CTkFrame):
                 text_color=COLORS["ink_700"],
                 border_color=COLORS["ink_100"],
                 border_width=1,
-                hover_color=COLORS["ink_50"],
+                hover_color=COLORS["magenta_50"],
                 corner_radius=20,
                 height=34,
                 command=lambda c=cat: self._selecionar_categoria(c["nome"])
@@ -92,11 +106,13 @@ class CadastroPerda(ctk.CTkFrame):
             btn.grid(row=i // 4, column=i % 4, padx=4, pady=4, sticky="w")
             self.cat_buttons[cat["nome"]] = btn
 
+        # === Linha: Local e Data ===
         linha_frame = ctk.CTkFrame(form_inner, fg_color="transparent")
         linha_frame.pack(fill="x", pady=(18, 0))
         linha_frame.grid_columnconfigure(0, weight=1)
         linha_frame.grid_columnconfigure(1, weight=1)
 
+        # Local
         local_col = ctk.CTkFrame(linha_frame, fg_color="transparent")
         local_col.grid(row=0, column=0, sticky="ew", padx=(0, 8))
         self._label(local_col, "Onde perdeu? *")
@@ -111,20 +127,23 @@ class CadastroPerda(ctk.CTkFrame):
             button_hover_color=COLORS["ink_200"],
             dropdown_fg_color=COLORS["white"],
             dropdown_text_color=COLORS["ink_700"],
-            dropdown_hover_color=COLORS["ink_50"],
+            dropdown_hover_color=COLORS["ink_100"],
             height=40,
             corner_radius=10,
         )
         self.combo_local.pack(fill="x")
         self.combo_local.set(LOCAIS[0])
 
+        # Data
         data_col = ctk.CTkFrame(linha_frame, fg_color="transparent")
         data_col.grid(row=0, column=1, sticky="ew", padx=(8, 0))
         self._label(data_col, "Quando aconteceu?")
-        self.entry_data = self._entry(data_col, datetime.now().strftime("%Y-%m-%d"))
+        self.entry_data = self._entry(
+            data_col, datetime.now().strftime("%Y-%m-%d"))
         self.entry_data.delete(0, "end")
         self.entry_data.insert(0, datetime.now().strftime("%Y-%m-%d"))
 
+        # === Descrição ===
         self._label(form_inner, "Descrição detalhada", pady_top=18)
         self.text_desc = ctk.CTkTextbox(
             form_inner,
@@ -138,7 +157,9 @@ class CadastroPerda(ctk.CTkFrame):
         )
         self.text_desc.pack(fill="x")
 
-        self._label(form_inner, "Foto do item (opcional, mas recomendado)", pady_top=18)
+        # === Upload de foto ===
+        self._label(
+            form_inner, "Foto do item (opcional, mas recomendado)", pady_top=18)
 
         self.upload_frame = ctk.CTkFrame(
             form_inner,
@@ -161,9 +182,12 @@ class CadastroPerda(ctk.CTkFrame):
         )
         self.upload_label.pack(expand=True)
 
-        self.upload_frame.bind("<Button-1>", lambda e: self._escolher_arquivo())
-        self.upload_label.bind("<Button-1>", lambda e: self._escolher_arquivo())
+        self.upload_frame.bind(
+            "<Button-1>", lambda e: self._escolher_arquivo())
+        self.upload_label.bind(
+            "<Button-1>", lambda e: self._escolher_arquivo())
 
+        # === Botões ===
         botoes = ctk.CTkFrame(form_inner, fg_color="transparent")
         botoes.pack(fill="x", pady=(24, 0))
 
@@ -175,7 +199,7 @@ class CadastroPerda(ctk.CTkFrame):
             text_color=COLORS["ink_700"],
             border_color=COLORS["ink_100"],
             border_width=1,
-            hover_color=COLORS["ink_50"],
+            hover_color=COLORS["ink_100"],
             corner_radius=10,
             height=42, width=110,
             command=lambda: self.on_navigate("inicio")
@@ -186,7 +210,7 @@ class CadastroPerda(ctk.CTkFrame):
             text="Cadastrar perda  →",
             font=("Segoe UI", 13, "bold"),
             fg_color=COLORS["magenta"],
-            text_color="#FFFFFF",
+            text_color=COLORS["white"],
             hover_color=COLORS["magenta_dark"],
             corner_radius=10,
             height=42, width=180,
@@ -219,12 +243,13 @@ class CadastroPerda(ctk.CTkFrame):
         return entry
 
     def _selecionar_categoria(self, nome):
+        """Marca a categoria escolhida visualmente."""
         self.categoria_selecionada = nome
         for cat_nome, btn in self.cat_buttons.items():
             if cat_nome == nome:
                 btn.configure(
                     fg_color=COLORS["ink_900"],
-                    text_color=COLORS["ink_25"],
+                    text_color=COLORS["white"],
                     border_color=COLORS["ink_900"]
                 )
             else:
@@ -235,6 +260,7 @@ class CadastroPerda(ctk.CTkFrame):
                 )
 
     def _escolher_arquivo(self):
+        """Abre dialog para escolher imagem."""
         path = filedialog.askopenfilename(
             title="Selecione uma foto",
             filetypes=[
@@ -251,29 +277,44 @@ class CadastroPerda(ctk.CTkFrame):
             )
 
     def _salvar(self):
+        """Valida e salva o item no banco."""
         nome = self.entry_nome.get().strip()
         local = self.combo_local.get()
         data = self.entry_data.get().strip()
         descricao = self.text_desc.get("1.0", "end").strip()
 
+        # --- INÍCIO DA VALIDAÇÃO (Contribuição Individual) ---
         if not nome or len(nome) < 3:
-            messagebox.showerror("Erro", "Por favor, informe o nome do item (mínimo 3 caracteres).")
+            messagebox.showerror(
+                "Erro", "Por favor, informe o nome do item (mínimo 3 caracteres).")
             return
 
         if not self.categoria_selecionada:
             messagebox.showerror("Erro", "Por favor, selecione uma categoria.")
             return
 
+        try:
+            # Tenta converter a string para data para validar o formato
+            datetime.strptime(data, "%Y-%m-%d")
+        except ValueError:
+            messagebox.showerror(
+                "Erro", "Formato de data inválido. Use o padrão AAAA-MM-DD (Ex: 2026-04-28).")
+            return
+
         if not local or local == "Selecione...":
             messagebox.showerror("Erro", "Por favor, selecione onde perdeu.")
             return
+        # --- FIM DA VALIDAÇÃO ---
 
+        # Upload da imagem (se houver)
         foto_url = None
         if self.foto_caminho:
-            self.upload_label.configure(text="⏳  Fazendo upload...", text_color=COLORS["ink_500"])
+            self.upload_label.configure(
+                text="⏳  Fazendo upload...", text_color=COLORS["ink_500"])
             self.update()
             foto_url = upload_imagem(self.foto_caminho)
 
+        # Salva no banco
         item_id = db.cadastrar_item(
             tipo="perda",
             usuario_id=self.usuario["id"],

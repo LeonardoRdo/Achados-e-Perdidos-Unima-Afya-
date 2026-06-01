@@ -1,5 +1,10 @@
 """
 screens/detalhe.py — Detalhe do item + chat
+
+Mostra:
+- Card com foto, dados e linha do tempo (esquerda)
+- Chat aluno ↔ funcionário (direita)
+- Funcionário pode mudar o status do item
 """
 
 import customtkinter as ctk
@@ -10,35 +15,38 @@ import database as db
 
 
 class DetalheItem(ctk.CTkFrame):
-    def __init__(self, parent, usuario, item, on_navigate, on_logout, on_theme_change=None):
+    def __init__(self, parent, usuario, item, on_navigate, on_logout):
         super().__init__(parent, fg_color=COLORS["ink_25"], corner_radius=0)
         self.usuario = usuario
         self.item = item
         self.on_navigate = on_navigate
         self.on_logout = on_logout
-        self.on_theme_change = on_theme_change
 
+        # Determina nav_atual baseado em quem está logado
         nav = "admin" if usuario["tipo"] == "funcionario" else "inicio"
+
         self._build(nav)
 
     def _build(self, nav_atual):
+        # App bar
         app_bar = AppBar(
             self,
             self.usuario,
             self.on_logout,
             nav_atual=nav_atual,
             on_nav=self.on_navigate,
-            subtitle=f"Caso #{self.item['id']}",
-            on_theme_change=self.on_theme_change,
+            subtitle=f"Caso #{self.item['id']}"
         )
         app_bar.pack(fill="x", side="top")
 
+        # Body
         body = ctk.CTkScrollableFrame(self, fg_color=COLORS["ink_25"], corner_radius=0)
         body.pack(fill="both", expand=True)
 
         wrapper = ctk.CTkFrame(body, fg_color="transparent")
         wrapper.pack(fill="both", expand=True, padx=40, pady=24)
 
+        # Botão voltar
         ctk.CTkButton(
             wrapper,
             text="← Voltar",
@@ -47,7 +55,7 @@ class DetalheItem(ctk.CTkFrame):
             text_color=COLORS["ink_700"],
             border_color=COLORS["ink_100"],
             border_width=1,
-            hover_color=COLORS["ink_50"],
+            hover_color=COLORS["ink_100"],
             corner_radius=10,
             height=34, width=90,
             command=lambda: self.on_navigate(
@@ -55,12 +63,16 @@ class DetalheItem(ctk.CTkFrame):
             )
         ).pack(anchor="w", pady=(0, 16))
 
+        # Grid principal: detalhe (esquerda) + chat (direita)
         grid = ctk.CTkFrame(wrapper, fg_color="transparent")
         grid.pack(fill="both", expand=True)
         grid.grid_columnconfigure(0, weight=1, uniform="col")
         grid.grid_columnconfigure(1, weight=1, uniform="col")
 
+        # Coluna esquerda: detalhe
         self._criar_card_detalhe(grid)
+
+        # Coluna direita: chat
         self._criar_card_chat(grid)
 
     def _criar_card_detalhe(self, parent):
@@ -73,6 +85,7 @@ class DetalheItem(ctk.CTkFrame):
         )
         card.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
 
+        # Foto/banner
         foto = ctk.CTkFrame(
             card,
             fg_color=COLORS["magenta_50"],
@@ -91,9 +104,11 @@ class DetalheItem(ctk.CTkFrame):
             text_color=COLORS["magenta"]
         ).pack(expand=True)
 
+        # Body do detalhe
         det = ctk.CTkFrame(card, fg_color="transparent")
         det.pack(fill="x", padx=22, pady=22)
 
+        # Nome
         ctk.CTkLabel(
             det,
             text=self.item.get("nome", ""),
@@ -103,9 +118,11 @@ class DetalheItem(ctk.CTkFrame):
             wraplength=400
         ).pack(anchor="w", fill="x")
 
+        # Badge de status
         badge = StatusBadge(det, self.item.get("status", "aberto"))
         badge.pack(anchor="w", pady=(8, 0))
 
+        # Metadados
         meta_frame = ctk.CTkFrame(det, fg_color="transparent")
         meta_frame.pack(fill="x", pady=(16, 0))
 
@@ -126,23 +143,32 @@ class DetalheItem(ctk.CTkFrame):
             row.pack(fill="x", pady=4)
 
             ctk.CTkLabel(
-                row, text=icone, font=("Segoe UI", 14), width=24
+                row,
+                text=icone,
+                font=("Segoe UI", 14),
+                width=24
             ).pack(side="left")
 
             ctk.CTkLabel(
-                row, text=f"{lbl}:",
+                row,
+                text=f"{lbl}:",
                 font=("Segoe UI", 11),
                 text_color=COLORS["ink_400"],
-                width=80, anchor="w"
+                width=80,
+                anchor="w"
             ).pack(side="left", padx=(4, 8))
 
             ctk.CTkLabel(
-                row, text=val,
+                row,
+                text=val,
                 font=("Segoe UI", 12, "bold"),
                 text_color=COLORS["ink_900"],
-                anchor="w", wraplength=280, justify="left"
+                anchor="w",
+                wraplength=280,
+                justify="left"
             ).pack(side="left", fill="x", expand=True)
 
+        # Linha do tempo
         timeline_frame = ctk.CTkFrame(det, fg_color="transparent")
         timeline_frame.pack(fill="x", pady=(20, 0))
 
@@ -159,35 +185,44 @@ class DetalheItem(ctk.CTkFrame):
             row.pack(fill="x", pady=4)
 
             ctk.CTkLabel(
-                row, text="●",
+                row,
+                text="●",
                 font=("Segoe UI", 14),
-                text_color=COLORS["magenta"], width=20
+                text_color=COLORS["magenta"],
+                width=20
             ).pack(side="left")
 
             info = ctk.CTkFrame(row, fg_color="transparent")
             info.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
             ctk.CTkLabel(
-                info, text=STATUS.get(h["status"], h["status"]),
+                info,
+                text=STATUS.get(h["status"], h["status"]),
                 font=("Segoe UI", 12, "bold"),
-                text_color=COLORS["ink_900"], anchor="w"
+                text_color=COLORS["ink_900"],
+                anchor="w"
             ).pack(anchor="w")
 
             ctk.CTkLabel(
-                info, text=self._formatar_data_hora(h["criado_em"]),
+                info,
+                text=self._formatar_data_hora(h["criado_em"]),
                 font=("Segoe UI", 10),
-                text_color=COLORS["ink_400"], anchor="w"
+                text_color=COLORS["ink_400"],
+                anchor="w"
             ).pack(anchor="w")
 
+        # Botões de ação (só para funcionário)
         if self.usuario["tipo"] == "funcionario":
             self._criar_acoes_funcionario(det)
 
     def _criar_acoes_funcionario(self, parent):
+        """Botões para funcionário mudar o status."""
         sep = ctk.CTkFrame(parent, fg_color=COLORS["ink_100"], height=1)
         sep.pack(fill="x", pady=(20, 16))
 
         ctk.CTkLabel(
-            parent, text="ALTERAR STATUS",
+            parent,
+            text="ALTERAR STATUS",
             font=("Segoe UI", 10, "bold"),
             text_color=COLORS["ink_400"]
         ).pack(anchor="w", pady=(0, 12))
@@ -204,19 +239,26 @@ class DetalheItem(ctk.CTkFrame):
 
         for status, texto, bg, fg in acoes:
             btn = ctk.CTkButton(
-                botoes_frame, text=texto,
+                botoes_frame,
+                text=texto,
                 font=("Segoe UI", 11, "bold"),
-                fg_color=bg, text_color=fg,
-                hover_color=COLORS["ink_100"],
-                corner_radius=8, height=34,
+                fg_color=bg,
+                text_color=fg,
+                hover_color=COLORS["ink_200"],
+                corner_radius=8,
+                height=34,
                 command=lambda s=status: self._mudar_status(s)
             )
             btn.pack(fill="x", pady=2)
 
     def _mudar_status(self, novo_status):
-        if messagebox.askyesno("Confirmar", f"Mudar status para '{STATUS[novo_status]}'?"):
+        if messagebox.askyesno(
+            "Confirmar",
+            f"Mudar status para '{STATUS[novo_status]}'?"
+        ):
             db.atualizar_status(self.item["id"], novo_status)
             messagebox.showinfo("Sucesso", "Status atualizado!")
+            # Recarrega a tela
             self.item = db.buscar_item(self.item["id"])
             self.on_navigate("detalhe", self.item)
 
@@ -230,10 +272,12 @@ class DetalheItem(ctk.CTkFrame):
         )
         card.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
 
+        # Header do chat
         header = ctk.CTkFrame(card, fg_color="transparent", height=70)
         header.pack(fill="x", padx=18, pady=(14, 0))
         header.pack_propagate(False)
 
+        # Avatar do contato (se aluno → mostra foto do funcionário; se funcionário → mostra do aluno)
         if self.usuario["tipo"] == "aluno":
             contato_nome = "Setor de Achados"
             contato_avatar = "👩‍💼"
@@ -242,9 +286,11 @@ class DetalheItem(ctk.CTkFrame):
             contato_avatar = "👨‍🎓"
 
         ctk.CTkLabel(
-            header, text=contato_avatar,
+            header,
+            text=contato_avatar,
             font=("Segoe UI", 22),
-            width=42, height=42, corner_radius=21,
+            width=42, height=42,
+            corner_radius=21,
             fg_color=COLORS["magenta_50"]
         ).pack(side="left")
 
@@ -252,99 +298,133 @@ class DetalheItem(ctk.CTkFrame):
         info_frame.pack(side="left", padx=(12, 0), pady=8)
 
         ctk.CTkLabel(
-            info_frame, text=contato_nome,
+            info_frame,
+            text=contato_nome,
             font=("Segoe UI", 13, "bold"),
-            text_color=COLORS["ink_900"], anchor="w"
+            text_color=COLORS["ink_900"],
+            anchor="w"
         ).pack(anchor="w")
 
         ctk.CTkLabel(
-            info_frame, text="● Online",
+            info_frame,
+            text="● Online",
             font=("Segoe UI", 10),
-            text_color=COLORS["success"], anchor="w"
+            text_color=COLORS["success"],
+            anchor="w"
         ).pack(anchor="w")
 
+        # Divisória
         ctk.CTkFrame(card, fg_color=COLORS["ink_100"], height=1).pack(fill="x")
 
+        # Body do chat (mensagens)
         self.chat_body = ctk.CTkScrollableFrame(
-            card, fg_color=COLORS["ink_25"],
-            corner_radius=0, height=380
+            card,
+            fg_color=COLORS["ink_25"],
+            corner_radius=0,
+            height=380
         )
         self.chat_body.pack(fill="both", expand=True)
 
         self._renderizar_mensagens()
 
+        # Input de mensagem
         input_frame = ctk.CTkFrame(card, fg_color="transparent", height=60)
         input_frame.pack(fill="x", padx=14, pady=14)
         input_frame.pack_propagate(False)
 
         self.entry_msg = ctk.CTkEntry(
-            input_frame, placeholder_text="Digite uma mensagem...",
+            input_frame,
+            placeholder_text="Digite uma mensagem...",
             font=("Segoe UI", 12),
             fg_color=COLORS["white"],
             text_color=COLORS["ink_900"],
             border_color=COLORS["ink_100"],
-            border_width=1, corner_radius=20, height=38
+            border_width=1,
+            corner_radius=20,
+            height=38
         )
         self.entry_msg.pack(side="left", fill="x", expand=True, padx=(0, 8))
         self.entry_msg.bind("<Return>", lambda e: self._enviar())
 
         ctk.CTkButton(
-            input_frame, text="Enviar",
+            input_frame,
+            text="Enviar",
             font=("Segoe UI", 12, "bold"),
             fg_color=COLORS["magenta"],
-            text_color="#FFFFFF",
+            text_color=COLORS["white"],
             hover_color=COLORS["magenta_dark"],
-            corner_radius=20, height=38, width=80,
+            corner_radius=20,
+            height=38, width=80,
             command=self._enviar
         ).pack(side="left")
 
     def _renderizar_mensagens(self):
+        # Limpa
         for w in self.chat_body.winfo_children():
             w.destroy()
 
         mensagens = db.listar_mensagens(self.item["id"])
 
         if not mensagens:
-            ctk.CTkLabel(
+            empty_label = ctk.CTkLabel(
                 self.chat_body,
                 text="💬\nNenhuma mensagem ainda.\nInicie a conversa.",
                 font=("Segoe UI", 11),
                 text_color=COLORS["ink_400"],
                 justify="center"
-            ).pack(expand=True, pady=40)
+            )
+            empty_label.pack(expand=True, pady=40)
             return
 
         for msg in mensagens:
             self._criar_balao(msg)
 
     def _criar_balao(self, msg):
+        """Cria um balão de mensagem."""
         is_minha = msg["remetente_id"] == self.usuario["id"]
 
         wrapper = ctk.CTkFrame(self.chat_body, fg_color="transparent")
         wrapper.pack(fill="x", pady=4, padx=8)
 
+        # Bolha
         if is_minha:
-            balao = ctk.CTkFrame(wrapper, fg_color=COLORS["magenta"], corner_radius=14)
+            balao = ctk.CTkFrame(
+                wrapper,
+                fg_color=COLORS["magenta"],
+                corner_radius=14,
+            )
             balao.pack(side="right", anchor="e")
-            ctk.CTkLabel(
-                balao, text=msg["texto"],
+
+            label = ctk.CTkLabel(
+                balao,
+                text=msg["texto"],
                 font=("Segoe UI", 12),
-                text_color="#FFFFFF",
-                wraplength=320, justify="left", anchor="w"
-            ).pack(padx=14, pady=10)
+                text_color=COLORS["white"],
+                wraplength=320,
+                justify="left",
+                anchor="w"
+            )
+            label.pack(padx=14, pady=10)
         else:
             balao = ctk.CTkFrame(
-                wrapper, fg_color=COLORS["white"],
+                wrapper,
+                fg_color=COLORS["white"],
                 border_color=COLORS["ink_100"],
-                border_width=1, corner_radius=14
+                border_width=1,
+                corner_radius=14,
             )
             balao.pack(side="left", anchor="w")
-            ctk.CTkLabel(
-                balao, text=msg["texto"],
+
+            label = ctk.CTkLabel(
+                balao,
+                text=msg["texto"],
                 font=("Segoe UI", 12),
                 text_color=COLORS["ink_900"],
-                wraplength=320, justify="left", anchor="w"
-            ).pack(padx=14, pady=10)
+                wraplength=320,
+                justify="left",
+                anchor="w"
+            )
+            label.pack(padx=14, pady=10)
 
     def _enviar(self):
         texto = self.entry_msg.get().strip()
@@ -359,11 +439,15 @@ class DetalheItem(ctk.CTkFrame):
 
         self.entry_msg.delete(0, "end")
         self._renderizar_mensagens()
+
+        # Auto-scroll para o final
         self.after(100, lambda: self.chat_body._parent_canvas.yview_moveto(1.0))
 
     @staticmethod
     def _formatar_data_hora(timestamp):
+        """Formata timestamp do SQLite para exibição."""
         try:
+            # Formato esperado: '2026-04-22 14:35:00'
             partes = timestamp.split(" ")
             data = partes[0]
             hora = partes[1][:5] if len(partes) > 1 else ""

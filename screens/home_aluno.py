@@ -1,7 +1,11 @@
 """
 screens/home_aluno.py — Tela inicial do aluno
 
-Dashboard com saudação, métricas, CTA e lista de solicitações.
+Dashboard com:
+- Saudação personalizada
+- Cards de métricas (status das solicitações)
+- CTA para cadastrar nova perda
+- Lista de solicitações ativas
 """
 
 import customtkinter as ctk
@@ -11,26 +15,26 @@ import database as db
 
 
 class HomeAluno(ctk.CTkFrame):
-    def __init__(self, parent, usuario, on_navigate, on_logout, on_theme_change=None):
+    def __init__(self, parent, usuario, on_navigate, on_logout):
         super().__init__(parent, fg_color=COLORS["ink_25"], corner_radius=0)
         self.usuario = usuario
         self.on_navigate = on_navigate
         self.on_logout = on_logout
-        self.on_theme_change = on_theme_change
 
         self._build()
 
     def _build(self):
+        # App bar superior
         app_bar = AppBar(
             self,
             self.usuario,
             self.on_logout,
             nav_atual="inicio",
-            on_nav=self.on_navigate,
-            on_theme_change=self.on_theme_change,
+            on_nav=self.on_navigate
         )
         app_bar.pack(fill="x", side="top")
 
+        # Container scrollável do corpo
         body = ctk.CTkScrollableFrame(
             self,
             fg_color=COLORS["ink_25"],
@@ -38,9 +42,11 @@ class HomeAluno(ctk.CTkFrame):
         )
         body.pack(fill="both", expand=True, padx=0, pady=0)
 
+        # Wrapper para limitar largura
         wrapper = ctk.CTkFrame(body, fg_color="transparent")
         wrapper.pack(fill="both", expand=True, padx=40, pady=24)
 
+        # Saudação
         primeiro_nome = self.usuario["nome"].split()[0]
         ctk.CTkLabel(
             wrapper,
@@ -56,12 +62,19 @@ class HomeAluno(ctk.CTkFrame):
             text_color=COLORS["ink_500"]
         ).pack(anchor="w", pady=(2, 24))
 
+        # Cards de métricas
         self._criar_stats(wrapper)
+
+        # CTA hero
         self._criar_cta(wrapper)
+
+        # Lista de solicitações
         self._criar_lista_solicitacoes(wrapper)
 
     def _criar_stats(self, parent):
+        """Cria os 4 cards de métricas."""
         contadores = db.contar_status(self.usuario["id"])
+
         stats_frame = ctk.CTkFrame(parent, fg_color="transparent")
         stats_frame.pack(fill="x", pady=(0, 20))
 
@@ -80,7 +93,13 @@ class HomeAluno(ctk.CTkFrame):
             card.grid(row=0, column=i, padx=4, sticky="ew")
 
     def _criar_cta(self, parent):
-        cta = ctk.CTkFrame(parent, fg_color=COLORS["magenta"], corner_radius=16, height=100)
+        """Banner magenta de chamada para cadastrar perda."""
+        cta = ctk.CTkFrame(
+            parent,
+            fg_color=COLORS["magenta"],
+            corner_radius=16,
+            height=100
+        )
         cta.pack(fill="x", pady=(0, 24))
         cta.pack_propagate(False)
 
@@ -94,7 +113,7 @@ class HomeAluno(ctk.CTkFrame):
             text_frame,
             text="Perdeu algo no campus?",
             font=("Segoe UI", 17, "bold"),
-            text_color="#FFFFFF",  # branco fixo (o card é magenta nos dois temas)
+            text_color=COLORS["white"],
             anchor="w"
         ).pack(anchor="w")
 
@@ -102,17 +121,18 @@ class HomeAluno(ctk.CTkFrame):
             text_frame,
             text="Cadastre o item e acompanhe o status pelo chat.",
             font=("Segoe UI", 12),
-            text_color="#FFFFFF",
+            text_color=COLORS["white"],
             anchor="w"
         ).pack(anchor="w", pady=(2, 0))
 
+        # Botão branco
         btn = ctk.CTkButton(
             inner,
             text="Cadastrar perda  →",
             font=("Segoe UI", 13, "bold"),
-            fg_color="#FFFFFF",
+            fg_color=COLORS["white"],
             text_color=COLORS["magenta"],
-            hover_color=COLORS["ink_50"],
+            hover_color=COLORS["magenta_50"],
             corner_radius=10,
             height=40, width=160,
             command=lambda: self.on_navigate("cadastrar")
@@ -120,6 +140,8 @@ class HomeAluno(ctk.CTkFrame):
         btn.pack(side="right")
 
     def _criar_lista_solicitacoes(self, parent):
+        """Lista as solicitações ativas do aluno."""
+        # Header
         header = ctk.CTkFrame(parent, fg_color="transparent")
         header.pack(fill="x", pady=(0, 12))
 
@@ -128,7 +150,7 @@ class HomeAluno(ctk.CTkFrame):
 
         ctk.CTkLabel(
             header,
-            text="Minhas solicitações ativas",
+            text=f"Minhas solicitações ativas",
             font=("Segoe UI", 14, "bold"),
             text_color=COLORS["ink_700"]
         ).pack(side="left")
@@ -143,6 +165,7 @@ class HomeAluno(ctk.CTkFrame):
             height=22
         ).pack(side="left", padx=(8, 0))
 
+        # Lista de itens
         if not ativas:
             empty = ctk.CTkFrame(
                 parent,
@@ -154,6 +177,7 @@ class HomeAluno(ctk.CTkFrame):
             )
             empty.pack(fill="x")
             empty.pack_propagate(False)
+
             ctk.CTkLabel(
                 empty,
                 text="📭\nNenhuma solicitação ativa.\nCadastre uma perda para começar.",

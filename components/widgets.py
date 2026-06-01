@@ -1,36 +1,37 @@
+
 """
 components/widgets.py — Componentes visuais reutilizáveis
 
 Centraliza widgets que aparecem em várias telas:
-- AppBar (barra superior com logo, navegação, ThemeToggle e usuário)
+- AppBar (barra superior com logo, navegação e usuário)
 - StatusBadge (selo colorido de status)
 - ItemCard (card de item perdido/achado)
 - StatCard (card de métrica)
-- GalleryCard (card de galeria)
-- SearchBar (barra de busca)
+- IconLabel (ícone + texto)
 """
 
 import customtkinter as ctk
 from config import COLORS, FONTS, STATUS
-from components.theme_toggle import ThemeToggle
 
 
 # ============================================
 # APP BAR — barra superior
 # ============================================
 class AppBar(ctk.CTkFrame):
-    """Barra superior com brand, navegação, theme toggle e usuário logado."""
+    """Barra superior com brand, navegação e usuário logado."""
 
-    def __init__(self, parent, usuario, on_logout, nav_atual="inicio",
-                 on_nav=None, subtitle=None, on_theme_change=None):
+    def __init__(self, parent, usuario, on_logout, nav_atual="inicio", on_nav=None, subtitle=None):
         super().__init__(parent, fg_color=COLORS["white"], height=64,
                          corner_radius=0, border_width=0)
         self.usuario = usuario
         self.on_logout = on_logout
         self.on_nav = on_nav
         self.nav_atual = nav_atual
-        self.on_theme_change = on_theme_change
 
+        # Linha de borda inferior
+        self.configure(border_width=0)
+
+        # Container interno
         inner = ctk.CTkFrame(self, fg_color="transparent")
         inner.pack(fill="both", expand=True, padx=24, pady=12)
 
@@ -44,7 +45,7 @@ class AppBar(ctk.CTkFrame):
             width=36, height=36,
             corner_radius=8,
             fg_color=COLORS["magenta"],
-            text_color="#FFFFFF",  # branco fixo (logo da marca sempre branco)
+            text_color=COLORS["white"],
             font=("Segoe UI", 16, "bold")
         )
         logo_label.pack(side="left")
@@ -59,15 +60,13 @@ class AppBar(ctk.CTkFrame):
             text_color=COLORS["ink_900"]
         ).pack(anchor="w")
 
-        sub = subtitle if subtitle else (
-            "Painel Administrativo" if usuario["tipo"] == "funcionario" else "Afya Maceió"
-        )
+        sub = subtitle if subtitle else ("Painel Administrativo" if usuario["tipo"] == "funcionario" else "Afya Maceió")
         ctk.CTkLabel(
             text_frame,
             text=sub,
             font=("Segoe UI", 10),
             text_color=COLORS["ink_400"]
-        ).pack(anchor="w")
+        ).pack(anchor="w", pady=(0, 0))
 
         # === Navegação (centro) ===
         if usuario["tipo"] == "aluno":
@@ -93,7 +92,7 @@ class AppBar(ctk.CTkFrame):
                 font=("Segoe UI", 12, "bold" if is_active else "normal"),
                 fg_color=COLORS["magenta_50"] if is_active else "transparent",
                 text_color=COLORS["magenta"] if is_active else COLORS["ink_500"],
-                hover_color=COLORS["ink_50"],
+                hover_color=COLORS["magenta_100"] if is_active else COLORS["magenta_50"],
                 corner_radius=8,
                 height=32,
                 width=110 if "achados" in label.lower() or "recebidos" in label.lower() else 90,
@@ -101,28 +100,9 @@ class AppBar(ctk.CTkFrame):
             )
             btn.pack(side="left", padx=2)
 
-        # === Lado direito: Toggle de tema + Usuário ===
-        # Container do lado direito (usuário + toggle)
-        right_frame = ctk.CTkFrame(inner, fg_color="transparent")
-        right_frame.pack(side="right")
-
-        # Botão de logout (mais à direita)
-        logout_btn = ctk.CTkButton(
-            right_frame,
-            text="Sair",
-            font=("Segoe UI", 11),
-            fg_color="transparent",
-            text_color=COLORS["ink_500"],
-            hover_color=COLORS["ink_50"],
-            width=50, height=28,
-            corner_radius=14,
-            command=on_logout
-        )
-        logout_btn.pack(side="right", padx=(8, 0))
-
-        # Pill do usuário
+        # === Usuário (direita) ===
         user_frame = ctk.CTkFrame(
-            right_frame,
+            inner,
             fg_color=COLORS["white"],
             border_color=COLORS["ink_100"],
             border_width=1,
@@ -146,26 +126,24 @@ class AppBar(ctk.CTkFrame):
             text=usuario["nome"].split()[0],
             font=("Segoe UI", 12, "bold"),
             text_color=COLORS["ink_700"]
-        ).pack(side="left", padx=(0, 12))
+        ).pack(side="left", padx=(0, 8))
 
-        # === ThemeToggle (no canto superior direito, antes do usuário) ===
-        toggle_container = ctk.CTkFrame(right_frame, fg_color="transparent")
-        toggle_container.pack(side="right", padx=(0, 14))
-
-        self.theme_toggle = ThemeToggle(
-            toggle_container,
-            on_toggle=self._on_theme_toggled
+        logout_btn = ctk.CTkButton(
+            user_frame,
+            text="Sair",
+            font=("Segoe UI", 11),
+            fg_color="transparent",
+            text_color=COLORS["ink_500"],
+            hover_color=COLORS["ink_100"],
+            width=50, height=28,
+            corner_radius=14,
+            command=on_logout
         )
-        self.theme_toggle.pack(pady=4)
+        logout_btn.pack(side="left", padx=(0, 4))
 
         # Linha divisória inferior
         divider = ctk.CTkFrame(self, fg_color=COLORS["ink_100"], height=1)
         divider.pack(side="bottom", fill="x")
-
-    def _on_theme_toggled(self, novo_tema):
-        """Callback quando o tema é alternado."""
-        if self.on_theme_change:
-            self.on_theme_change(novo_tema)
 
 
 # ============================================
@@ -223,6 +201,7 @@ class StatCard(ctk.CTkFrame):
         inner = ctk.CTkFrame(self, fg_color="transparent")
         inner.pack(fill="both", expand=True, padx=16, pady=14)
 
+        # Ícone com fundo magenta-50
         ic_frame = ctk.CTkLabel(
             inner,
             text=icone,
@@ -234,6 +213,7 @@ class StatCard(ctk.CTkFrame):
         )
         ic_frame.pack(anchor="w")
 
+        # Número grande
         ctk.CTkLabel(
             inner,
             text=str(numero),
@@ -241,6 +221,7 @@ class StatCard(ctk.CTkFrame):
             text_color=COLORS["ink_900"]
         ).pack(anchor="w", pady=(8, 0))
 
+        # Label
         ctk.CTkLabel(
             inner,
             text=label,
@@ -275,6 +256,7 @@ class ItemCard(ctk.CTkFrame):
         inner = ctk.CTkFrame(self, fg_color="transparent")
         inner.pack(fill="both", expand=True, padx=14, pady=12)
 
+        # Thumb com ícone da categoria
         icone_cat = self._icone_categoria(item.get("categoria", ""))
         thumb = ctk.CTkLabel(
             inner,
@@ -287,9 +269,11 @@ class ItemCard(ctk.CTkFrame):
         )
         thumb.pack(side="left")
 
+        # Info do item
         info = ctk.CTkFrame(inner, fg_color="transparent")
         info.pack(side="left", fill="both", expand=True, padx=(14, 10))
 
+        # Título
         ctk.CTkLabel(
             info,
             text=item.get("nome", ""),
@@ -298,6 +282,7 @@ class ItemCard(ctk.CTkFrame):
             anchor="w"
         ).pack(anchor="w", fill="x")
 
+        # Meta
         meta_parts = []
         if mostrar_aluno and item.get("aluno_nome"):
             meta_parts.append(f"👤 {item['aluno_nome']}")
@@ -315,10 +300,12 @@ class ItemCard(ctk.CTkFrame):
             anchor="w"
         ).pack(anchor="w", fill="x", pady=(2, 0))
 
+        # Status badge
         if item.get("status"):
             badge = StatusBadge(inner, item["status"])
             badge.pack(side="right")
 
+        # Bind clique em todos os elementos
         if on_click:
             for w in [self, inner, info, thumb]:
                 w.bind("<Button-1>", lambda e: on_click(item))
@@ -339,6 +326,7 @@ class ItemCard(ctk.CTkFrame):
 
     @staticmethod
     def _formatar_data(data_str):
+        """Formata data ISO (2026-04-22) para 22/04."""
         try:
             partes = data_str.split("-")
             return f"{partes[2]}/{partes[1]}"
@@ -347,10 +335,10 @@ class ItemCard(ctk.CTkFrame):
 
 
 # ============================================
-# GALLERY CARD
+# GALLERY CARD — card vertical para galeria
 # ============================================
 class GalleryCard(ctk.CTkFrame):
-    """Card vertical (foto em cima, info embaixo)."""
+    """Card vertical (foto em cima, info embaixo) para galeria de itens disponíveis."""
 
     def __init__(self, parent, item, on_click=None):
         super().__init__(
@@ -364,6 +352,7 @@ class GalleryCard(ctk.CTkFrame):
         self.item = item
         self.pack_propagate(False)
 
+        # Foto (placeholder com ícone)
         foto_frame = ctk.CTkFrame(
             self,
             fg_color=COLORS["magenta_50"],
@@ -381,6 +370,7 @@ class GalleryCard(ctk.CTkFrame):
             text_color=COLORS["magenta"]
         ).pack(expand=True)
 
+        # Info
         info = ctk.CTkFrame(self, fg_color="transparent")
         info.pack(fill="both", expand=True, padx=12, pady=10)
 
@@ -407,7 +397,7 @@ class GalleryCard(ctk.CTkFrame):
 
 
 # ============================================
-# SEARCH BAR
+# SEARCH BAR — barra de busca
 # ============================================
 class SearchBar(ctk.CTkFrame):
     """Campo de busca com ícone."""
@@ -423,6 +413,7 @@ class SearchBar(ctk.CTkFrame):
         )
         self.on_change = on_change
 
+        # Ícone
         ctk.CTkLabel(
             self,
             text="🔍",
@@ -430,6 +421,7 @@ class SearchBar(ctk.CTkFrame):
             text_color=COLORS["ink_400"]
         ).pack(side="left", padx=(12, 4))
 
+        # Input
         self.entry = ctk.CTkEntry(
             self,
             placeholder_text=placeholder,
